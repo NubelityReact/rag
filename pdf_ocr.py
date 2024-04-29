@@ -17,7 +17,7 @@ ocr_model = PaddleOCR(lang="es", use_gpu=False)  # 'es' for Spanish
 # load model
 device: str = "mps" if torch.backends.mps.is_available() else "cpu"
 
-table_model = YOLO('./data/v4_mult/train/weights/last.pt')
+table_model = YOLO('/content/drive/MyDrive/rag-data/v4_mult/train/weights/last.pt')
 table_model.to(device)
 
 # # set model parameters
