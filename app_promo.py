@@ -1,6 +1,6 @@
 import streamlit as st
-from dotenv import load_dotenv
-from PyPDF2 import PdfReader
+import streamlit.components.v1  as components
+from dotenv import load_dotenv, find_dotenv
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 
 from langchain_community.embeddings import CohereEmbeddings
@@ -18,8 +18,18 @@ from htmlTemplates import css, bot_template, user_template
 from langchain.retrievers import BM25Retriever, EnsembleRetriever
 
 from langchain.llms import OpenAI
+from styles import styles
+from js import js
 
 from pdf_ocr import *
+import os
+
+
+dotenv_path = find_dotenv()
+print("Loading .env from:", dotenv_path)
+load_dotenv(dotenv_path)
+
+print(os.getenv('openai_api_key'))
 
 
 def chunk_docs(list_of_pages):
@@ -189,11 +199,34 @@ def handle_userinput(user_question, conversation_chain):
     st.write(user_template.replace("{{MSG}}", user_question), unsafe_allow_html=True)
     st.write(bot_template.replace("{{MSG}}", answer), unsafe_allow_html=True)
 
+def spinner():
+    with st.spinner("Procesando documentos"):
+        raw_text = process_pdf(pdf_docs[0], table_model)
+        text_chunks = get_text_chunks(raw_text) ## use this for whole page context
+        bm25_retriever = BM25Retriever.from_texts(
+            text_chunks
+        )
+        bm25_retriever.k = 2
+        embedding = OpenAIEmbeddings()
+        faiss_vectorstore = FAISS.from_texts(
+            text_chunks, embedding
+        )
+        faiss_retriever = faiss_vectorstore.as_retriever(search_type="similarity_score_threshold",
+                                                        search_kwargs={"score_threshold": 0.65, "k": 2})
+        # initialize the ensemble retriever
+        retriever = EnsembleRetriever(
+            retrievers=[bm25_retriever, faiss_retriever], weights=[0.50, 0.50]
+        )
+        st.session_state.conversation_chain = build_rag_chain(retriever)
+
 
 def main():
-    load_dotenv()
+    # load_dotenv("./.env")
     st.set_page_config(page_title="RAGente de póliza", page_icon=":books:")
-    st.write(css, unsafe_allow_html=True)
+    st.markdown(styles, unsafe_allow_html=True)
+    st.markdown(js, unsafe_allow_html=True)
+    # components.html(js, height=0)
+    # st.write(css, unsafe_allow_html=True)
 
     if "conversation_chain" not in st.session_state:
         st.session_state.conversation_chain = None
@@ -202,42 +235,10 @@ def main():
     user_question = st.text_input("Haz una consulta sobre tu póliza:")
 
     with st.sidebar:
-        st.subheader("Carga de documentos")
-        pdf_docs = st.file_uploader("Sube tu póliza en PDF aquí y da click en 'Procesar'", accept_multiple_files=True)
-        if st.button("Procesar"):
-            with st.spinner("Procesando documentos"):
-                raw_text = process_pdf(pdf_docs[0], table_model)
-                # text_chunks = chunk_docs(raw_text)
-                text_chunks = get_text_chunks(raw_text) ## use this for whole page context
-
-                # embeddings = CohereEmbeddings(model="embed-multilingual-light-v3.0")
-
-                # embeddings = OpenAIEmbeddings()
-
-                # retriever = FAISS.from_texts(texts=text_chunks, embedding=embeddings)\
-                #                 .as_retriever(search_type="similarity_score_threshold",
-                #                             search_kwargs={"score_threshold": 0.65, "k": 3})
-
-
-                # initialize the bm25 retriever and faiss retriever
-                bm25_retriever = BM25Retriever.from_texts(
-                    text_chunks
-                )
-                bm25_retriever.k = 2
-
-                embedding = OpenAIEmbeddings()
-                faiss_vectorstore = FAISS.from_texts(
-                    text_chunks, embedding
-                )
-                faiss_retriever = faiss_vectorstore.as_retriever(search_type="similarity_score_threshold",
-                                                                search_kwargs={"score_threshold": 0.65, "k": 2})
-
-                # initialize the ensemble retriever
-                retriever = EnsembleRetriever(
-                    retrievers=[bm25_retriever, faiss_retriever], weights=[0.50, 0.50]
-                )
-
-                st.session_state.conversation_chain = build_rag_chain(retriever)
+        #st.subheader("Carga de documentos")
+        pdf_docs = st.file_uploader("Sube tu póliza en PDF aquí y da click en 'Procesar'", accept_multiple_files=True, on_change=spinner(this))
+        
+            
 
     if user_question and st.session_state.conversation_chain:
         handle_userinput(user_question, st.session_state.conversation_chain)

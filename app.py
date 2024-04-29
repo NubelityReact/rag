@@ -1,6 +1,6 @@
 import streamlit as st
 from dotenv import load_dotenv
-from PyPDF2 import PdfReader
+# from PyPDF2 import PdfReader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 
 from langchain_community.embeddings import CohereEmbeddings
@@ -108,7 +108,7 @@ def main():
     if "conversation_chain" not in st.session_state:
         st.session_state.conversation_chain = None
 
-    st.header("RAGente de póliza :books:")
+    st.header("¡Hola! Bienvenido a AFIRME ChatBot, estoy aquí para ayudarte a resolver cualquier duda que tengas sobre alguna de tus pólizas.")
     user_question = st.text_input("Haz una consulta sobre tu póliza:")
 
     with st.sidebar:
