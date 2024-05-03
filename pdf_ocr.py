@@ -12,7 +12,7 @@ from ultralytics import YOLO
 file_path = './poliza.pdf'
 
 # Initialize the PaddleOCR model for Spanish language
-ocr_model = PaddleOCR(lang="es", use_gpu=False)  # 'es' for Spanish
+ocr_model = PaddleOCR(lang="es", use_gpu=True)  # 'es' for Spanish
 
 # load model
 device: str = "mps" if torch.backends.mps.is_available() else "cpu"
